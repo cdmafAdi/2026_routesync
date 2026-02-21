@@ -31,8 +31,8 @@ interface FamilyMember {
 const FamilyView: React.FC = () => {
   const [members, setMembers] = useState<FamilyMember[]>([
     { id: '1', name: 'Anjali D.', role: 'Wife', status: 'At Work (Magarpatta)', lastSeen: '2 mins ago', battery: '85%', avatar: 'https://i.pravatar.cc/150?u=Anjali' },
-    { id: '2', name: 'Rahul D.', role: 'Son', status: 'In Metro (Civil Court)', lastSeen: 'Just now', battery: '42%', avatar: 'https://i.pravatar.cc/150?u=Rahul' },
-    { id: '3', name: 'Sameer D.', role: 'Father', status: 'Home (Kothrud)', lastSeen: '15 mins ago', battery: '91%', avatar: 'https://i.pravatar.cc/150?u=Sameer' },
+    { id: '2', name: 'Rahul D.', role: 'Son', status: 'In Metro (Civil Court)', lastSeen: 'Just now', battery: '42%', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=200&auto=format&fit=crop' },
+    { id: '3', name: 'Sameer D.', role: 'Father', status: 'Home (Kothrud)', lastSeen: '15 mins ago', battery: '91%', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200&auto=format&fit=crop' },
   ]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
