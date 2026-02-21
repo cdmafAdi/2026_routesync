@@ -228,7 +228,7 @@ Once you share these, I'll generate a complete itinerary including travel, stay,
       outputAnalyserRef.current = outputAnalyser;
 
       const sessionPromise = ai.live.connect({
-        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+        model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         callbacks: {
           onopen: () => {
             setIsVoiceActive(true);

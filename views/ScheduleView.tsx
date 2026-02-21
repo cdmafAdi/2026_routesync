@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Bus, Train, Search, Clock, ArrowRight, LocateFixed, Info, ChevronLeft, ChevronRight, MapPin, Check, RefreshCcw, ShieldCheck, Loader2, ExternalLink, Ticket, Timer, Zap, IndianRupee, TrendingUp, X, Circle, Navigation } from 'lucide-react';
+import { Bus, Train, Search, Clock, ArrowRight, LocateFixed, Info, ChevronLeft, ChevronRight, MapPin, Check, RefreshCcw, ShieldCheck, Loader2, ExternalLink, Ticket, Timer, Zap, IndianRupee, TrendingUp, X, Circle, Navigation, Map as MapIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import { PMPML_BUSES, METRO_PURPLE_COORDS, METRO_AQUA_COORDS, BUS_ROUTE_10_PATH, BUS_ROUTE_1_PATH, BUS_ROUTE_5_PATH } from '../constants';
@@ -196,6 +196,25 @@ const ScheduleView: React.FC = () => {
 
       {tab === 'metro' ? (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
+          {/* Metro Map Section */}
+          <div className="space-y-4">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] px-4 flex items-center space-x-2">
+              <MapIcon size={12} className="text-indigo-600" />
+              <span>Metro Network Map</span>
+            </h3>
+            <div className="bg-white p-3 rounded-[2.5rem] border border-slate-100 shadow-2xl overflow-hidden mx-1">
+              <img 
+                src="metro_map.png" 
+                alt="Pune Metro Map" 
+                className="w-full h-auto rounded-[1.8rem]"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://picsum.photos/seed/punemetromap/1024/1024';
+                }}
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             {/* Purple Line */}
             <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden flex flex-col">
