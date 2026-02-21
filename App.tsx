@@ -115,7 +115,7 @@ const App: React.FC = () => {
         {/* Mobile Navigation Bar */}
         <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 flex justify-around items-center px-2 py-1 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-30">
           <NavItem to="/" icon={Home} label="Home" />
-          <NavItem to="/schedules" icon={Clock} label="Times" />
+          <NavItem to="/schedules" icon={Bus} label="METRO/PMPML" />
           <NavItem to="/plan" icon={Compass} label="Plan" />
           <NavItem to="/family" icon={Users} label="Family" />
           <NavItem to="/safety" icon={Shield} label="Safety" />

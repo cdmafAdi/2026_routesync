@@ -204,7 +204,7 @@ const ScheduleView: React.FC = () => {
             </h3>
             <div className="bg-white p-3 rounded-[2.5rem] border border-slate-100 shadow-2xl overflow-hidden mx-1">
               <img 
-                src="metro_map.png" 
+                src="https://punemetrorail.org/img/route_map_english1.jpg" 
                 alt="Pune Metro Map" 
                 className="w-full h-auto rounded-[1.8rem]"
                 onError={(e) => {
@@ -269,7 +269,7 @@ const ScheduleView: React.FC = () => {
             </h3>
             <div className="bg-white p-3 rounded-[2.5rem] border border-slate-100 shadow-2xl overflow-hidden mx-1">
               <img 
-                src="tt.jpeg" 
+                src="https://www.punemetrorail.org/assets/images/Time-Table-new-2-15Aug.jpg" 
                 alt="Metro Time Table" 
                 className="w-full h-auto rounded-[1.8rem]"
                 onError={(e) => {

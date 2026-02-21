@@ -152,13 +152,13 @@ const HomeView: React.FC = () => {
             <div className="flex items-center space-x-3">
                <button 
                  onClick={() => { setViewState('idle'); simulationLayer.current?.clearLayers(); }}
-                 className="bg-white p-4 rounded-2xl shadow-xl border border-slate-100 text-slate-800 hover:bg-slate-50 transition-all active:scale-90"
+                 className="bg-white py-4 px-4 rounded-2xl shadow-xl border border-slate-100 text-slate-800 hover:bg-slate-50 transition-all active:scale-90"
                >
                   {viewState === 'selecting' ? <ArrowLeft size={20} /> : <History size={20} />}
                </button>
                <div 
                  onClick={() => setIsSearching(true)}
-                 className="flex-1 bg-white p-4.5 rounded-2xl shadow-xl border border-slate-100 flex items-center space-x-4 cursor-pointer group hover:border-indigo-200 transition-all"
+                 className="flex-1 bg-white py-4 px-4.5 rounded-2xl shadow-xl border border-slate-100 flex items-center space-x-4 cursor-pointer group hover:border-indigo-200 transition-all"
                >
                   <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 shadow-lg animate-pulse"></div>
                   <span className={`text-sm font-black tracking-tight ${to ? 'text-slate-800' : 'text-slate-400'} group-hover:text-slate-600`}>
