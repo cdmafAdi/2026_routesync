@@ -45,7 +45,7 @@ const ChatbotView: React.FC = () => {
   const [voiceState, setVoiceState] = useState<'listening' | 'thinking' | 'speaking'>('listening');
   const [transcription, setTranscription] = useState('');
   const [error, setError] = useState<string | null>(null);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const outputAudioContextRef = useRef<AudioContext | null>(null);
@@ -54,13 +54,13 @@ const ChatbotView: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const sessionRef = useRef<any>(null);
-  
+
   const inputAnalyserRef = useRef<AnalyserNode | null>(null);
   const outputAnalyserRef = useRef<AnalyserNode | null>(null);
 
   useEffect(() => {
     let initialText = "Namaste! I'm **RAAHI**, your smart Pune Travel companion. How can I help you today?";
-    
+
     if (isAgentMode) {
       initialText = `Namaste! I'm your **RAAHI Travel Agent**. I'm excited to help you plan your perfect trip to Pune! 
 
@@ -127,7 +127,7 @@ Once you share these, I'll generate a complete itinerary including travel, stay,
 
       const inputAnalyser = inputAnalyserRef.current;
       const outputAnalyser = outputAnalyserRef.current;
-      
+
       let intensity = 0;
       if (inputAnalyser) {
         const dataArray = new Uint8Array(inputAnalyser.frequencyBinCount);
@@ -135,7 +135,7 @@ Once you share these, I'll generate a complete itinerary including travel, stay,
         const peak = Math.max(...Array.from(dataArray));
         intensity = (peak / 255) * 100;
       }
-      
+
       if (outputAnalyser && (voiceState === 'speaking' || voiceState === 'thinking')) {
         const dataArray = new Uint8Array(outputAnalyser.frequencyBinCount);
         outputAnalyser.getByteFrequencyData(dataArray);
@@ -144,11 +144,11 @@ Once you share these, I'll generate a complete itinerary including travel, stay,
       }
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
+
       const width = canvas.width;
       const height = canvas.height;
       const centerY = height / 2;
-      
+
       // Multi-layered Sine Wave Implementation for iOS 9 Look
       const drawWave = (color: string, opac: number, freq: number, amp: number, speed: number, offset: number, lineWidth: number) => {
         ctx.beginPath();
@@ -156,7 +156,7 @@ Once you share these, I'll generate a complete itinerary including travel, stay,
         ctx.lineWidth = lineWidth;
         ctx.lineCap = 'round';
         ctx.globalAlpha = opac;
-        
+
         // Base vibration so it's always "alive"
         const breathing = Math.sin(phase * 0.05) * 5;
         const dynamicAmp = (amp + breathing + (intensity * 4.0)) * (voiceState === 'thinking' ? 0.3 : 1.0);
@@ -166,9 +166,9 @@ Once you share these, I'll generate a complete itinerary including travel, stay,
           const mid = width / 2;
           const distFromMid = Math.abs(x - mid);
           const taper = Math.pow(Math.E, -Math.pow(distFromMid / (width / 3.5), 2));
-          
+
           const y = centerY + Math.sin(x * freq + phase * speed + offset) * dynamicAmp * taper;
-          
+
           if (x === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
@@ -192,8 +192,8 @@ Once you share these, I'll generate a complete itinerary including travel, stay,
   };
 
   const stopVoiceAssistant = useCallback(() => {
-    if (sessionRef.current) { try { sessionRef.current.close(); } catch(e) {} sessionRef.current = null; }
-    activeSourcesRef.current.forEach(source => { try { source.stop(); } catch(e) {} });
+    if (sessionRef.current) { try { sessionRef.current.close(); } catch (e) { } sessionRef.current = null; }
+    activeSourcesRef.current.forEach(source => { try { source.stop(); } catch (e) { } });
     activeSourcesRef.current.clear();
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') audioContextRef.current.close().catch(console.error);
     if (outputAudioContextRef.current && outputAudioContextRef.current.state !== 'closed') outputAudioContextRef.current.close().catch(console.error);
@@ -211,7 +211,13 @@ Once you share these, I'll generate a complete itinerary including travel, stay,
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-      
+
+      await inputCtx.resume();
+      await outputCtx.resume();
+
+      console.log("Input state:", inputCtx.state);
+      console.log("Output state:", outputCtx.state);
+
       audioContextRef.current = inputCtx;
       outputAudioContextRef.current = outputCtx;
 
@@ -230,49 +236,67 @@ Once you share these, I'll generate a complete itinerary including travel, stay,
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         callbacks: {
-          onopen: () => {
+          onopen: async () => {
+            console.log("Gemini live connected");
             setIsVoiceActive(true);
             setVoiceState('listening');
             setTimeout(() => drawSiriWave(), 100);
-            
-            const scriptProcessor = inputCtx.createScriptProcessor(4096, 1, 1);
-            scriptProcessor.onaudioprocess = (e) => {
-              const inputData = e.inputBuffer.getChannelData(0);
+
+            await inputCtx.audioWorklet.addModule('worklets/mic-processor.js');
+
+            const workletNode = new AudioWorkletNode(inputCtx, 'mic-processor');
+
+            workletNode.port.onmessage = (event) => {
+              console.log("Mic data received", event.data.length);
+              const inputData = event.data;
               const l = inputData.length;
               const int16 = new Int16Array(l);
-              for (let i = 0; i < l; i++) int16[i] = inputData[i] * 32768;
-              const pcmBlob = { data: encode(new Uint8Array(int16.buffer)), mimeType: 'audio/pcm;rate=16000' };
-              sessionPromise.then(session => session && session.sendRealtimeInput({ media: pcmBlob })).catch(() => {});
+
+              for (let i = 0; i < l; i++) {
+                int16[i] = inputData[i] * 32768;
+              }
+
+              const pcmBlob = {
+                data: encode(new Uint8Array(int16.buffer)),
+                mimeType: 'audio/pcm;rate=16000'
+              };
+
+              sessionPromise
+                .then(session => session && session.sendRealtimeInput({ media: pcmBlob }))
+                .catch(() => { });
             };
-            inputSource.connect(scriptProcessor);
-            scriptProcessor.connect(inputCtx.destination);
+
+            inputSource.connect(workletNode);
           },
           onmessage: async (message: LiveServerMessage) => {
+            console.log("FULL MESSAGE:", message);
             const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
+            console.log("TEXT RESPONSE:", message.serverContent.modelTurn.parts[0].text);
             if (base64Audio && outputCtx.state !== 'closed') {
+              console.log("AUDIO CHUNK RECEIVED");
               setVoiceState('speaking');
               nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputCtx.currentTime);
               const audioBuffer = await decodeAudioData(decode(base64Audio), outputCtx, 24000, 1);
               const sourceNode = outputCtx.createBufferSource();
               sourceNode.buffer = audioBuffer;
-              
+
               sourceNode.connect(outputAnalyser);
               outputAnalyser.connect(outputCtx.destination);
-              
+
               sourceNode.addEventListener('ended', () => {
                 activeSourcesRef.current.delete(sourceNode);
                 if (activeSourcesRef.current.size === 0) {
                   setVoiceState('listening');
                 }
               });
-              
+
               sourceNode.start(nextStartTimeRef.current);
               nextStartTimeRef.current += audioBuffer.duration;
               activeSourcesRef.current.add(sourceNode);
             }
 
             if (message.serverContent?.turnComplete) {
-               setVoiceState('listening');
+              setVoiceState('listening');
             }
 
             if (message.serverContent?.modelTurn?.parts[0]?.text) {
@@ -285,7 +309,7 @@ Once you share these, I'll generate a complete itinerary including travel, stay,
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } } },
-          systemInstruction: isAgentMode 
+          systemInstruction: isAgentMode
             ? "You are RAAHI, a high-end Travel Agent for Pune. When provided with trip details (days, season, people, budget), create a detailed plan including travel mode (Metro/Bus/Cab), place suggestions, accommodation type, and a breakdown of food, stay, and transport expenses. Present it professionally."
             : "You are RAAHI, a friendly Pune commute expert. Keep responses helpful and concise.",
         }
@@ -303,8 +327,8 @@ Once you share these, I'll generate a complete itinerary including travel, stay,
 
     const contextPrefix = isAgentMode ? "[AGENT MODE - TRIP PLANNING REQUEST] User Details: " : "";
     const botResponse = await getGeminiResponse(contextPrefix + input);
-    
-    setMessages(prev => [...prev, { id: (Date.now()+1).toString(), text: botResponse, sender: 'bot', timestamp: new Date() }]);
+
+    setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: botResponse, sender: 'bot', timestamp: new Date() }]);
     setIsLoading(false);
   };
 
@@ -323,7 +347,7 @@ Once you share these, I'll generate a complete itinerary including travel, stay,
             </span>
           </div>
         </div>
-        <button 
+        <button
           onClick={isVoiceActive ? stopVoiceAssistant : startVoiceAssistant}
           className={`p-3 rounded-2xl transition-all flex items-center space-x-2 ${isVoiceActive ? 'bg-rose-500 text-white shadow-rose-200 shadow-lg' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
         >
@@ -343,25 +367,25 @@ Once you share these, I'll generate a complete itinerary including travel, stay,
 
           <div className="relative z-10 text-center space-y-6 pt-8">
             <div className="bg-white/5 backdrop-blur-2xl px-8 py-3 rounded-full border border-white/10 inline-flex items-center space-x-4 shadow-2xl">
-               {voiceState === 'listening' ? (
-                 <div className="flex space-x-2 items-center">
-                   <div className="w-2 h-5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0s]" />
-                   <div className="w-2 h-5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.1s]" />
-                   <div className="w-2 h-5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                 </div>
-               ) : voiceState === 'thinking' ? (
-                 <Loader2 size={24} className="text-indigo-400 animate-spin" />
-               ) : (
-                 <div className="flex items-center space-x-2">
-                   <Volume2 size={24} className="text-indigo-400 animate-pulse" />
-                   <div className="flex space-x-1">
-                     {[1, 2, 3].map(i => <div key={i} className="w-1 h-3 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: `${i * 0.2}s` }} />)}
-                   </div>
-                 </div>
-               )}
-               <span className="text-[12px] font-black text-white/90 uppercase tracking-[0.3em]">
-                 {voiceState === 'listening' ? 'Listening...' : voiceState === 'thinking' ? 'Processing...' : 'RAAHI Speaking'}
-               </span>
+              {voiceState === 'listening' ? (
+                <div className="flex space-x-2 items-center">
+                  <div className="w-2 h-5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0s]" />
+                  <div className="w-2 h-5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.1s]" />
+                  <div className="w-2 h-5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                </div>
+              ) : voiceState === 'thinking' ? (
+                <Loader2 size={24} className="text-indigo-400 animate-spin" />
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <Volume2 size={24} className="text-indigo-400 animate-pulse" />
+                  <div className="flex space-x-1">
+                    {[1, 2, 3].map(i => <div key={i} className="w-1 h-3 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: `${i * 0.2}s` }} />)}
+                  </div>
+                </div>
+              )}
+              <span className="text-[12px] font-black text-white/90 uppercase tracking-[0.3em]">
+                {voiceState === 'listening' ? 'Listening...' : voiceState === 'thinking' ? 'Processing...' : 'RAAHI Speaking'}
+              </span>
             </div>
             <h2 className="text-white text-6xl font-black tracking-tighter drop-shadow-2xl">
               {voiceState === 'speaking' ? "I'm here." : "Go ahead..."}
@@ -370,26 +394,25 @@ Once you share these, I'll generate a complete itinerary including travel, stay,
 
           {/* iOS 9 LIQUID WAVEFORM AREA - SIGNIFICANTLY ENLARGED */}
           <div className="relative w-full h-[36rem] flex items-center justify-center -my-12">
-             <canvas ref={canvasRef} width={1200} height={700} className="w-full h-full max-w-2xl" />
-             
-             {/* Dynamic Central Bloom Glow */}
-             <div className={`absolute w-80 h-80 rounded-full blur-[130px] transition-all duration-1000 ${
-               voiceState === 'listening' ? 'bg-emerald-500/30 scale-125' : 
-               voiceState === 'thinking' ? 'bg-indigo-500/40 scale-150 animate-pulse' : 
-               'bg-indigo-400/50 scale-[2.2]'
-             }`} />
+            <canvas ref={canvasRef} width={1200} height={700} className="w-full h-full max-w-2xl" />
+
+            {/* Dynamic Central Bloom Glow */}
+            <div className={`absolute w-80 h-80 rounded-full blur-[130px] transition-all duration-1000 ${voiceState === 'listening' ? 'bg-emerald-500/30 scale-125' :
+              voiceState === 'thinking' ? 'bg-indigo-500/40 scale-150 animate-pulse' :
+                'bg-indigo-400/50 scale-[2.2]'
+              }`} />
           </div>
 
           {/* CONTROL SECTION WITH ADJUSTED PADDING */}
           <div className="relative z-10 w-full max-w-sm space-y-12 flex flex-col items-center pb-8">
             <div className="bg-white/[0.03] backdrop-blur-3xl border border-white/10 p-12 rounded-[5rem] w-full text-center shadow-2xl ring-1 ring-white/5">
-               <p className="text-emerald-100/95 text-xl font-bold italic leading-relaxed line-clamp-3">
-                 "{transcription || (voiceState === 'listening' ? 'Tell me where you want to go in Pune...' : '...')}"
-               </p>
+              <p className="text-emerald-100/95 text-xl font-bold italic leading-relaxed line-clamp-3">
+                "{transcription || (voiceState === 'listening' ? 'Tell me where you want to go in Pune...' : '...')}"
+              </p>
             </div>
-            
-            <button 
-              onClick={stopVoiceAssistant} 
+
+            <button
+              onClick={stopVoiceAssistant}
               className="bg-white text-slate-950 p-9 rounded-full shadow-[0_0_80px_rgba(255,255,255,0.25)] hover:scale-110 active:scale-95 transition-all group border-[6px] border-[#10b981]/20 hover:border-[#10b981]/40"
             >
               <X size={48} className="group-hover:rotate-90 transition-transform duration-500" />
@@ -407,15 +430,15 @@ Once you share these, I'll generate a complete itinerary including travel, stay,
               </div>
               <div className={`p-4 rounded-[1.8rem] text-sm leading-relaxed shadow-sm ${m.sender === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'}`}>
                 <FormattedMessage text={m.text} />
-                <p className={`text-[9px] mt-2 font-black uppercase opacity-50 ${m.sender === 'user' ? 'text-white' : 'text-slate-400'}`}>{m.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                <p className={`text-[9px] mt-2 font-black uppercase opacity-50 ${m.sender === 'user' ? 'text-white' : 'text-slate-400'}`}>{m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
               </div>
             </div>
           </div>
         ))}
         {isLoading && (
           <div className="flex items-center space-x-3 text-slate-400 px-2">
-             <Loader2 size={18} className="animate-spin text-indigo-500" />
-             <span className="text-[10px] font-black uppercase tracking-widest">RAAHI is thinking...</span>
+            <Loader2 size={18} className="animate-spin text-indigo-500" />
+            <span className="text-[10px] font-black uppercase tracking-widest">RAAHI is thinking...</span>
           </div>
         )}
         <div ref={messagesEndRef} />
